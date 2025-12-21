@@ -46,7 +46,6 @@ def perf_stat(command: list[str], cwd: str | None = None, repeats=1, out_file: s
         perf_command += ["-x,"]
     if events is not None:
         perf_command += ["--event", create_event_param(events)]
-    print(perf_command + command)
     return subprocess.run(
         perf_command + command,
         cwd=cwd)
