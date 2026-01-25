@@ -1,5 +1,5 @@
 from cases import TestCase,  generate_random_cases
-from perf import PerfEvent, perf_stat
+from perf import PerfEvent, perf_stat, check_kernel_params
 import git
 import subprocess
 import csv
@@ -24,6 +24,7 @@ class Tester():
         self.repo = git.Repo(working_dir)
 
     def benchmark_branches(self, cases: list[TestCase], num_trials=1, branches=None) -> dict[str, BenchmarkResults]:
+        check_kernel_params()
         if branches is None:
             branches = self.repo.list_branches()
         else:

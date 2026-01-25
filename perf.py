@@ -62,13 +62,17 @@ def to_float(num: str):
         return 0
 
 
-def plot_formula_comparison(metric: str, results, perc=False):
+def plot_formula_comparison(metric: str, results, perc=False, branch_labels: dict[str, str] | None = None, dimensions: tuple[int, int] = (6, 4), x_rotation=90):
     branch_counter = 0
     num_branches = len(results)
     width = 1/(num_branches+1)
     json_value_key = "value_dt" if perc else "value"
     json_unit_key = "unit_dt" if perc else "unit"
+    plt.figure(figsize=dimensions)
     for (branch, branch_res) in results.items():
+        branch_label = branch
+        if branch_labels is not None:
+            branch_label = branch_labels[branch]
         branch_res = results[branch]
         heights = []
         errors = []
@@ -81,7 +85,7 @@ def plot_formula_comparison(metric: str, results, perc=False):
                 for (name, measures) in res.items():
                     if measures[json_value_key] != "" and name == metric:
                         unit = measures[json_unit_key]
-                        x_labels.append(f"{formula} | len={len(word)}")
+                        x_labels.append(f"{formula}  |w|={len(word)}")
                         x_size += 1
                         value = to_float(measures[json_value_key])
 
@@ -103,17 +107,15 @@ def plot_formula_comparison(metric: str, results, perc=False):
 
         offset = width * branch_counter + width/2 - width*num_branches/2
         if display_errors:
-            plt.bar(np.arange(x_size) + offset, heights, width=width, label=branch, yerr=errors)
+            plt.bar(np.arange(x_size) + offset, heights, width=width, label=branch_label, yerr=errors)
         else:
-            plt.bar(np.arange(x_size) + offset, heights, width=width, label=branch)
+            plt.bar(np.arange(x_size) + offset, heights, width=width, label=branch_label)
         branch_counter += 1
         plt.ylabel(axis_label)
-        plt.xticks(ticks=np.arange(x_size), labels=x_labels, rotation=90)
-
+        plt.xticks(ticks=np.arange(x_size), labels=x_labels, rotation=x_rotation)
     plt.legend()
     # plt.yscale("log")
     plt.title(f"Comparison of '{metric}' across {num_branches} branches")
-    plt.show()
 
 
 if __name__ == "__main__":
