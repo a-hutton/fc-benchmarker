@@ -1,9 +1,8 @@
-from cases import TestCase,  generate_random_cases
+from cases import TestCase
 from perf import PerfEvent, perf_stat, check_kernel_params
 import git
 import subprocess
 import csv
-import json
 
 from pathlib import Path
 from time import time
@@ -19,9 +18,36 @@ PERF_EVENTS = [
 ]
 
 
+def format_command(command: list[str], formula: str, word: str) -> list[str]:
+    """
+    Replaces the argument '$FORMULA$' with the formula, and the argument '$WORD$' with the word
+    """
+    copied = command.copy()
+    if "$FORMULA$" in copied:
+        formula_idx = copied.index("$FORMULA$")
+        copied[formula_idx] = formula
+    else:
+        print("No formula placeholder in command")
+
+    if "$WORD$" in copied:
+        word_idx = copied.index("$WORD$")
+        copied[word_idx] = word
+    else:
+        print("No word placeholder in command")
+
+    return copied
+
+
+DEFAULT_RUN_COMMAND = ["./target/release/fc-implementation", "--quiet", "--pattern", "$FORMULA$", "--text", "$WORD$"]
+OLD_COMMAND = ["./target/release/fc-implementation", "--quiet", "$FORMULA$", "$WORD$"]
+DEFAULT_BUILD_COMMAND = ["cargo", "build", "--release"]
+
+
 class Tester():
-    def __init__(self, working_dir: str) -> None:
+    def __init__(self, working_dir: str, build_command: list[str] = DEFAULT_BUILD_COMMAND, run_command: list[str] = DEFAULT_RUN_COMMAND) -> None:
         self.repo = git.Repo(working_dir)
+        self.build_command = build_command
+        self.run_command = run_command
 
     def benchmark_branches(self, cases: list[TestCase], num_trials=1, branches=None) -> dict[str, BenchmarkResults]:
         check_kernel_params()
@@ -41,8 +67,7 @@ class Tester():
         return results
 
     def run_benchmark(self, cases: list[TestCase], num_trials: int) -> BenchmarkResults:
-        build_command = ["cargo", "build", "--release"]
-        res = subprocess.run(build_command, cwd=self.repo.dir)
+        res = subprocess.run(self.build_command, cwd=self.repo.dir)
         res.check_returncode()
 
         # make a folder in the tmp directory for our output files
@@ -55,8 +80,9 @@ class Tester():
                 out_file = f"/tmp/parkbench/run_{file_idx}.csv"
                 output_files[(case.formula, word)] = out_file
                 file_idx += 1
+                print(format_command(self.run_command, case.formula, word))
                 res = perf_stat(
-                    command=["./target/release/fc-implementation", "--quiet", case.formula, word],
+                    command=format_command(self.run_command, case.formula, word),
                     cwd=self.repo.dir,
                     repeats=num_trials,
                     out_file=out_file,
@@ -119,9 +145,8 @@ class Tester():
 
 
 if __name__ == "__main__":
-    tester = Tester("/home/ahutton/dev/uni/Part D Project/fc-implementation")
-    # cases = load_csv("./test cases/cases.csv")
-    cases = generate_random_cases(3, connectives_range=[0], word_len=5)
-    data = tester.benchmark_branches(cases, branches=["factor-trimming"], num_trials=3)
-    with open("./out/data.json", "w") as f:
-        json.dump(data, f, indent=4)
+    cmd = ["./test", "$FORMULA$", "-t", "$WORD$"]
+
+    print(cmd)
+    print(format_command(cmd, "x = y z", "abc"))
+    print(cmd)

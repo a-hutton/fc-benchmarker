@@ -62,7 +62,7 @@ def to_float(num: str):
         return 0
 
 
-def plot_formula_comparison(metric: str, results, perc=False, branch_labels: dict[str, str] | None = None, dimensions: tuple[int, int] = (6, 4), x_rotation=90):
+def plot_formula_comparison(metric: str, results, perc=False, branch_labels: dict[str, str] | None = None, dimensions: tuple[int, int] = (6, 4), x_rotation=90, short_labels=True):
     branch_counter = 0
     num_branches = len(results)
     width = 1/(num_branches+1)
@@ -81,11 +81,16 @@ def plot_formula_comparison(metric: str, results, perc=False, branch_labels: dic
         x_size = 0
         axis_label = ""
         for (formula, word_results) in branch_res.items():
+            formatted_formula = formula.replace("$", "\\$")
             for (word, res) in word_results.items():
                 for (name, measures) in res.items():
                     if measures[json_value_key] != "" and name == metric:
                         unit = measures[json_unit_key]
-                        x_labels.append(f"{formula}  |w|={len(word)}")
+                        if short_labels:
+                            x_labels.append(f"{formatted_formula}  |w|={len(word)}")
+                        else:
+                            x_labels.append(f"{formatted_formula}  w ={word.replace('$', '\\$')}")
+
                         x_size += 1
                         value = to_float(measures[json_value_key])
 
