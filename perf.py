@@ -62,7 +62,7 @@ def to_float(num: str):
         return 0
 
 
-def plot_formula_comparison(metric: str, results, perc=False, branch_labels: dict[str, str] | None = None, dimensions: tuple[int, int] = (6, 4), x_rotation=90, short_labels=True):
+def plot_formula_comparison(metric: str, results, perc=False, branch_labels: dict[str, str] | None = None, dimensions: tuple[int, int] = (6, 4), x_rotation=90, short_labels=True, log_scale=False):
     branch_counter = 0
     num_branches = len(results)
     width = 1/(num_branches+1)
@@ -119,7 +119,8 @@ def plot_formula_comparison(metric: str, results, perc=False, branch_labels: dic
         plt.ylabel(axis_label)
         plt.xticks(ticks=np.arange(x_size), labels=x_labels, rotation=x_rotation)
     plt.legend()
-    # plt.yscale("log")
+    if log_scale:
+        plt.yscale("log")
     plt.title(f"Comparison of '{metric}' across {num_branches} branches")
 
 
