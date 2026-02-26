@@ -7,33 +7,23 @@ import csv
 from pathlib import Path
 from time import time
 
-# formula -> word -> perf_metric -> values
-type BenchmarkResults = dict[str, dict[str, dict[str, dict[str, str]]]]
-
-# branch name -> BenchmarkResults
-type BranchesBenchmarkResults = dict[str, BenchmarkResults]
 
 PERF_EVENTS = [
     PerfEvent.DURATION_TIME, PerfEvent.CYCLES, PerfEvent.BRANCHES, PerfEvent.CONTEXT_SWITCHES, PerfEvent.CPU_MIGRATIONS, PerfEvent.CACHE_REFERENCES, PerfEvent.CACHE_MISSES, PerfEvent.TASK_CLOCK
 ]
 
 
-def format_command(command: list[str], formula: str, word: str) -> list[str]:
+def format_command(command: list[str], replacements: dict[str, str]) -> list[str]:
     """
-    Replaces the argument '$FORMULA$' with the formula, and the argument '$WORD$' with the word
+    Replaces arguments in command using a dictionary of replacement values
     """
     copied = command.copy()
-    if "$FORMULA$" in copied:
-        formula_idx = copied.index("$FORMULA$")
-        copied[formula_idx] = formula
-    else:
-        print("No formula placeholder in command")
-
-    if "$WORD$" in copied:
-        word_idx = copied.index("$WORD$")
-        copied[word_idx] = word
-    else:
-        print("No word placeholder in command")
+    for key, val in replacements.items():
+        if key in copied:
+            key_idx = copied.index(key)
+            copied[key_idx] = val
+        else:
+            print(f"Placeholder {key} not found in in command")
 
     return copied
 
@@ -49,7 +39,7 @@ class Tester():
         self.build_command = build_command
         self.run_command = run_command
 
-    def benchmark_branches(self, cases: list[TestCase], num_trials=1, branches=None) -> dict[str, BenchmarkResults]:
+    def benchmark_branches(self, cases: list[TestCase], num_trials=1, branches=None, print_output=False) -> dict[str, list]:
         check_kernel_params()
         if branches is None:
             branches = self.repo.list_branches()
@@ -58,15 +48,15 @@ class Tester():
             for branch in branches:
                 if branch not in possible_branches:
                     raise IOError(f"Branch {branch} not found in repository")
-        results: dict[str, BenchmarkResults] = {}
+        results: dict[str, list[dict]] = {}
         for branch in branches:
             print(
                 f"*********************** Branch {branch} ***********************")
             self.repo.checkout(branch)
-            results[branch] = self.run_benchmark(cases, num_trials)
+            results[branch] = self.run_benchmark(cases, num_trials, print_output=print_output)
         return results
 
-    def run_benchmark(self, cases: list[TestCase], num_trials: int) -> BenchmarkResults:
+    def run_benchmark(self, cases: list[TestCase], num_trials: int,  print_output=False) -> list[dict]:
         res = subprocess.run(self.build_command, cwd=self.repo.dir)
         res.check_returncode()
 
@@ -74,33 +64,39 @@ class Tester():
         Path("/tmp/parkbench").mkdir(parents=True, exist_ok=True)
 
         file_idx = 0
-        output_files: dict[tuple[str, str], str] = {}
+        output_files = []
         for case in cases:
-            for word in case.words:
-                out_file = f"/tmp/parkbench/run_{file_idx}.csv"
-                output_files[(case.formula, word)] = out_file
-                file_idx += 1
-                print(format_command(self.run_command, case.formula, word))
-                res = perf_stat(
-                    command=format_command(self.run_command, case.formula, word),
-                    cwd=self.repo.dir,
-                    repeats=num_trials,
-                    out_file=out_file,
-                    events=PERF_EVENTS,
-                )
+            out_file = f"/tmp/parkbench/run_{file_idx}.csv"
+            output_files.append(out_file)
+            file_idx += 1
+            formatted_command = format_command(self.run_command, case)
+            print(f"Now Running {formatted_command}")
+            res = perf_stat(
+                command=formatted_command,
+                cwd=self.repo.dir,
+                repeats=num_trials,
+                out_file=out_file,
+                events=PERF_EVENTS,
+                stdout=print_output
+            )
+            res.check_returncode()
 
         print(output_files)
-        bench_data: BenchmarkResults = {}
-        for (formula, word), filename in output_files.items():
+        if len(output_files) != len(cases):
+            print(
+                f"!!!!! SOMETHING HAS GONE VERY WRONG !!!!!\n output files: len: {len(output_files)}\ntest cases: len: {len(cases)}")
+            print("Don't trust the output JSON - data *will* be misaligned and attributed to wrong case")
+        bench_data = []
+        for i in range(len(cases)):
+            case = cases[i]
+            filename = output_files[i]
+            # read data for this run
             with open(filename, "r") as f:
                 reader = csv.reader(f)
+                run_data: dict[str, dict] = {}
                 for line in reader:
                     if len(line) <= 1:
                         continue
-                    if formula not in bench_data:
-                        bench_data[formula] = {}
-                    if word not in bench_data[formula]:
-                        bench_data[formula][word] = {}
 
                     value = line[0]
                     unit = line[1]
@@ -121,7 +117,12 @@ class Tester():
                     }
 
                     metric_name = line[2]
-                    bench_data[formula][word][metric_name] = metric_data
+                    run_data[metric_name] = metric_data
+                case_data = {
+                    "parameters": case,
+                    "data": run_data
+                }
+                bench_data.append(case_data)
 
         return bench_data
 
@@ -148,5 +149,7 @@ if __name__ == "__main__":
     cmd = ["./test", "$FORMULA$", "-t", "$WORD$"]
 
     print(cmd)
-    print(format_command(cmd, "x = y z", "abc"))
+    print(format_command(cmd, {
+        "$FORMULA$": "x = aby",
+    }))
     print(cmd)

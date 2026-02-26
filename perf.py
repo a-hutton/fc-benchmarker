@@ -37,7 +37,7 @@ def create_event_param(events: list[PerfEvent]) -> str:
     return ",".join(str(e) for e in events)
 
 
-def perf_stat(command: list[str], cwd: str | None = None, repeats=1, out_file: str | None = None, events: list[PerfEvent] | None = None, csv=True) -> subprocess.CompletedProcess[bytes]:
+def perf_stat(command: list[str], cwd: str | None = None, repeats=1, out_file: str | None = None, events: list[PerfEvent] | None = None, csv=True, stdout=False) -> subprocess.CompletedProcess[bytes]:
     # , "--event", "duration_time,cycles,branches,context-switches,migrations,cache-references,cache-misses,task-clock", "-x,", "--repeat", str(repeats), "-o", out_file] + command
     perf_command = ["perf", "stat", "--repeat", str(repeats)]
     if out_file is not None:
@@ -48,7 +48,8 @@ def perf_stat(command: list[str], cwd: str | None = None, repeats=1, out_file: s
         perf_command += ["--event", create_event_param(events)]
     return subprocess.run(
         perf_command + command,
-        cwd=cwd)
+        cwd=cwd,
+        capture_output=not stdout)
 
 
 def to_float(num: str):
@@ -62,7 +63,7 @@ def to_float(num: str):
         return 0
 
 
-def plot_formula_comparison(metric: str, results, perc=False, branch_labels: dict[str, str] | None = None, dimensions: tuple[int, int] = (6, 4), x_rotation=90, short_labels=True, log_scale=False):
+def plot_formula_comparison(metric: PerfEvent, results, perc=False, branch_labels: dict[str, str] | None = None, dimensions: tuple[int, int] = (6, 4), x_rotation=90, short_labels=True, log_scale=False, case_labels: list | None = None):
     branch_counter = 0
     num_branches = len(results)
     width = 1/(num_branches+1)
@@ -80,35 +81,39 @@ def plot_formula_comparison(metric: str, results, perc=False, branch_labels: dic
         x_labels = []
         x_size = 0
         axis_label = ""
-        for (formula, word_results) in branch_res.items():
-            formatted_formula = formula.replace("$", "\\$")
-            for (word, res) in word_results.items():
-                for (name, measures) in res.items():
-                    if measures[json_value_key] != "" and name == metric:
-                        unit = measures[json_unit_key]
-                        if short_labels:
-                            x_labels.append(f"{formatted_formula}  |w|={len(word)}")
-                        else:
-                            x_labels.append(f"{formatted_formula}  w ={word.replace('$', '\\$')}")
+        case_counter = 0
+        for (i, case) in enumerate(branch_res):
+            case_params: dict[str, str] = case["parameters"]
+            case_full_data = case["data"]
+            case_metric_data = case_full_data[metric]
 
-                        x_size += 1
-                        value = to_float(measures[json_value_key])
+            unit = case_metric_data[json_unit_key]
+            if case_labels is not None:
+                x_labels.append(case_labels[i])
+            elif short_labels:
+                x_labels.append(f"Case {case_counter}")
+            else:
+                case_label = ", ".join((val.replace("$", "\\$") for val in case_params.values()))
+                x_labels.append(f"Case {case_counter}: {case_label}")
 
-                        # seconds are much more understandable
-                        if unit == "ns":
-                            unit = "s"
-                            value /= 1e9
-                        if unit == "":
-                            unit = "count"
-                        heights.append(value)
+            x_size += 1
+            value = to_float(case_metric_data[json_value_key])
 
-                        # label y axis showing unit
-                        if axis_label == "":
-                            axis_label = f"{metric} ({unit})"
-                            display_errors = measures["variance"] != "single_trial"
-                            percentage_error = to_float(measures["variance"].replace("%", ""))
-                            value_error = percentage_error/100 * value
-                            errors.append(value_error)
+            # seconds are much more understandable
+            if unit == "ns":
+                unit = "s"
+                value /= 1e9
+            if unit == "":
+                unit = "count"
+            heights.append(value)
+
+            # label y axis showing unit
+            if axis_label == "":
+                axis_label = f"{metric} ({unit})"
+                display_errors = case_metric_data["variance"] != "single_trial"
+                percentage_error = to_float(case_metric_data["variance"].replace("%", ""))
+                value_error = percentage_error/100 * value
+                errors.append(value_error)
 
         offset = width * branch_counter + width/2 - width*num_branches/2
         if display_errors:

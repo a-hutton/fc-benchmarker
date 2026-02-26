@@ -1,15 +1,18 @@
 import csv
 import copy
 from itertools import islice
-from random import randint, choice
+from random import choice
 from cases.generation import create_equation, tautology
 
 
-class TestCase:
-    def __init__(self, formula: str, *words: str) -> None:
-        self.formula = formula
-        self.words = list(words)
-        pass
+type TestCase = dict[str, str]
+
+
+def formula_test_cases(formula: str, *words: str) -> list[TestCase]:
+    cases = []
+    for word in words:
+        cases.append({"$FORMULA$": formula, "$WORD$": word})
+    return cases
 
 
 def load_csv(filename: str) -> list[TestCase]:
@@ -20,7 +23,7 @@ def load_csv(filename: str) -> list[TestCase]:
         for row in islice(reader, 1, None):
             formula = row[0]
             words = row[1:]
-            cases.append(TestCase(formula, *words))
+            cases.append(formula_test_cases(formula, *words))
 
     return cases
 
@@ -49,4 +52,4 @@ def random_case(alphabet="abcd", num_vars=3, word_len=20, num_connectives=2) -> 
         f = copy.deepcopy(formula)
         formula = tautology(f, tautology_type)
 
-    return TestCase(str(formula),  word)
+    return formula_test_cases(str(formula),  word)[0]
