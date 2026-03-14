@@ -5,7 +5,6 @@ import subprocess
 import csv
 
 from pathlib import Path
-from time import time
 
 
 PERF_EVENTS = [
@@ -57,9 +56,11 @@ class Tester():
         return results
 
     def run_benchmark(self, cases: list[TestCase], num_trials: int,  print_output=False) -> list[dict]:
-        res = subprocess.run(self.build_command, cwd=self.repo.dir)
-        res.check_returncode()
-
+        try:
+            res = subprocess.run(self.build_command, cwd=self.repo.dir, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Build command failed ({self.build_command})\nError:\n{e}")
+            raise e
         # make a folder in the tmp directory for our output files
         Path("/tmp/parkbench").mkdir(parents=True, exist_ok=True)
 
@@ -125,24 +126,6 @@ class Tester():
                 bench_data.append(case_data)
 
         return bench_data
-
-    def time_command(self, command: list[str], id=None) -> float:
-        if id is not None:
-            print(f"Running benchmark {id}")
-        start = time()
-        res = subprocess.run(
-            command,
-            cwd=self.repo.dir)
-
-        end = time()
-        id_str = "" if id is None else f"({id})"
-        if res.returncode != 0:
-            print(f"Benchmark {id_str} - code: {res.returncode}")
-            return -1
-        else:
-            runtime = end-start
-            print(f"Benchmark {id_str} finished in {runtime:.2f}s")
-            return runtime
 
 
 if __name__ == "__main__":

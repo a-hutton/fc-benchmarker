@@ -46,10 +46,17 @@ def perf_stat(command: list[str], cwd: str | None = None, repeats=1, out_file: s
         perf_command += ["-x,"]
     if events is not None:
         perf_command += ["--event", create_event_param(events)]
-    return subprocess.run(
-        perf_command + command,
-        cwd=cwd,
-        capture_output=not stdout)
+
+    try:
+        process = subprocess.run(
+            perf_command + command,
+            cwd=cwd,
+            capture_output=not stdout,
+            check=True)
+        return process
+    except subprocess.CalledProcessError as e:
+        print(f"Unexpected error calling perf with command {command}\nError:\n{e}")
+        raise e
 
 
 def to_float(num: str):
@@ -97,6 +104,7 @@ def plot_formula_comparison(metric: PerfEvent, results, perc=False, branch_label
                 x_labels.append(f"Case {case_counter}: {case_label}")
 
             x_size += 1
+            case_counter += 1
             value = to_float(case_metric_data[json_value_key])
 
             # seconds are much more understandable
