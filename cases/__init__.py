@@ -1,6 +1,5 @@
 import csv
 import copy
-from itertools import islice
 from random import choice
 from cases.generation import create_equation, tautology
 
@@ -19,11 +18,17 @@ def load_csv(filename: str) -> list[TestCase]:
     cases = []
     with open(filename, "r") as f:
         reader = csv.reader(f)
-        # skip first row in iter, keep going until end
-        for row in islice(reader, 1, None):
-            formula = row[0]
-            words = row[1:]
-            cases.append(formula_test_cases(formula, *words))
+        placeholder_keys = next(reader)
+        # remove trailing empty cells in header
+        while placeholder_keys[-1] == "":
+            placeholder_keys.pop()
+        print(f"Using keys: {placeholder_keys}")
+        for (i, row) in enumerate(reader):
+            if len(row) != len(placeholder_keys):
+                print(f"Expected {len(placeholder_keys)} values in row {i+1}, found {len(row)}")
+                raise AssertionError()
+            case = dict(zip(placeholder_keys, row))
+            cases.append(case)
 
     return cases
 
