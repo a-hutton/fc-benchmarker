@@ -33,6 +33,10 @@ DEFAULT_BUILD_COMMAND = ["cargo", "build", "--release"]
 
 
 class Tester():
+    """
+    The core of the tool - create an instance of this with the given source code
+    """
+
     def __init__(self, working_dir: str, build_command: list[str] = DEFAULT_BUILD_COMMAND, run_command: list[str] = DEFAULT_RUN_COMMAND) -> None:
         self.repo = git.Repo(working_dir)
         self.build_command = build_command
