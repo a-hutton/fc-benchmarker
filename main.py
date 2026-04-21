@@ -3,8 +3,8 @@ from time import time
 import csv
 import json
 
-from cases import random_case, load_csv
-from tester import Tester
+from marker.cases import load_csv
+from marker import Tester
 
 
 PROJECT_PATH = "/home/ahutton/dev/uni/Part D Project/fc-implementation"
