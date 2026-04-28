@@ -32,7 +32,7 @@ OLD_COMMAND = ["./target/release/fc-implementation", "--quiet", "$FORMULA$", "$W
 DEFAULT_BUILD_COMMAND = ["cargo", "build", "--release"]
 
 
-class Tester():
+class Benchmarker():
     """
     The core of the tool - create an instance of this with the given source code
     """

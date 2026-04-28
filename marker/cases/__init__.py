@@ -7,7 +7,7 @@ from cases.generation import create_equation, tautology
 type TestCase = dict[str, str]
 
 
-def formula_test_cases(formula: str, *words: str) -> list[TestCase]:
+def fc_test_cases(formula: str, *words: str) -> list[TestCase]:
     cases = []
     for word in words:
         cases.append({"$FORMULA$": formula, "$WORD$": word})
@@ -57,4 +57,4 @@ def random_case(alphabet="abcd", num_vars=3, word_len=20, num_connectives=2) -> 
         f = copy.deepcopy(formula)
         formula = tautology(f, tautology_type)
 
-    return formula_test_cases(str(formula),  word)[0]
+    return fc_test_cases(str(formula),  word)[0]
