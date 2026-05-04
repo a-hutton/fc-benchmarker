@@ -70,7 +70,7 @@ def to_float(num: str):
         return 0
 
 
-def plot_formula_comparison(metric: PerfEvent, results, perc=False, branch_labels: dict[str, str] | None = None, dimensions: tuple[int, int] = (6, 4), x_rotation=90, short_labels=True, log_scale=False, case_labels: list | None = None):
+def plot_results(metric: PerfEvent, results, perc=False, branch_labels: dict[str, str] | None = None, dimensions: tuple[int, int] = (6, 4), x_rotation=90, short_labels=True, log_scale=False, case_labels: list | None = None):
     branch_counter = 0
     num_branches = len(results)
     width = 1/(num_branches+1)
