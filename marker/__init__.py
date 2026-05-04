@@ -1,6 +1,6 @@
-from cases import TestCase
-from perf import PerfEvent, perf_stat, check_kernel_params
-import git
+from .cases import TestCase
+from .perf import PerfEvent, perf_stat, check_kernel_params
+from . import git
 import subprocess
 import csv
 

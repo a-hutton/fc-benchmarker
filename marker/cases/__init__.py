@@ -1,7 +1,7 @@
 import csv
 import copy
 from random import choice
-from cases.generation import create_equation, tautology
+from .generation import create_equation, tautology
 
 
 type TestCase = dict[str, str]
