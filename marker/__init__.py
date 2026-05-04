@@ -32,6 +32,29 @@ OLD_COMMAND = ["./target/release/fc-implementation", "--quiet", "$FORMULA$", "$W
 DEFAULT_BUILD_COMMAND = ["cargo", "build", "--release"]
 
 
+class BuildError(Exception):
+    """An Eror occured while building"""
+
+    def __init__(self, inner: subprocess.CalledProcessError, branch: str | None = None) -> None:
+        self.inner = inner
+        self.branch = branch
+
+    def __str__(self) -> str:
+        return f"Run Error - issue when running benchmark\nbranch:{self.branch}\n{self.inner.output}"
+
+
+class RunError(Exception):
+    """An Error occured while running"""
+
+    def __init__(self, inner: subprocess.CalledProcessError, branch: str | None = None, command=None) -> None:
+        self.inner = inner
+        self.branch = branch
+        self.command = command
+
+    def __str__(self) -> str:
+        return f"Run Error - issue when running benchmark\nbranch:{self.branch}\ncommand:{self.command}\n{self.inner.output}"
+
+
 class Benchmarker():
     """
     The core of the tool - create an instance of this with the given source code
@@ -59,12 +82,13 @@ class Benchmarker():
             results[branch] = self.run_benchmark(cases, num_trials, print_output=print_output)
         return results
 
-    def run_benchmark(self, cases: list[TestCase], num_trials: int,  print_output=False) -> list[dict]:
+    def run_benchmark(self, cases: list[TestCase], num_trials: int = 1,  print_output=False) -> list[dict]:
         try:
             res = subprocess.run(self.build_command, cwd=self.repo.dir, check=True)
+            res.check_returncode()
         except subprocess.CalledProcessError as e:
             print(f"Build command failed ({self.build_command})\nError:\n{e}")
-            raise e
+            raise BuildError(e, self.repo.dir) from None
         # make a folder in the tmp directory for our output files
         Path("/tmp/parkbench").mkdir(parents=True, exist_ok=True)
 
@@ -76,15 +100,18 @@ class Benchmarker():
             file_idx += 1
             formatted_command = format_command(self.run_command, case)
             print(f"Now Running {formatted_command}")
-            res = perf_stat(
-                command=formatted_command,
-                cwd=self.repo.dir,
-                repeats=num_trials,
-                out_file=out_file,
-                events=PERF_EVENTS,
-                stdout=print_output
-            )
-            res.check_returncode()
+            try:
+                res = perf_stat(
+                    command=formatted_command,
+                    cwd=self.repo.dir,
+                    repeats=num_trials,
+                    out_file=out_file,
+                    events=PERF_EVENTS,
+                    stdout=print_output
+                )
+                res.check_returncode()
+            except subprocess.CalledProcessError as e:
+                raise RunError(e, self.repo.dir, formatted_command)
 
         print(output_files)
         if len(output_files) != len(cases):
