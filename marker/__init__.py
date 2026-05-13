@@ -65,7 +65,7 @@ class Benchmarker():
         self.build_command = build_command
         self.run_command = run_command
 
-    def benchmark_branches(self, cases: list[TestCase], num_trials=1, branches=None, print_output=False) -> dict[str, list]:
+    def benchmark_branches(self, cases: list[TestCase], num_trials=1, branches=None, print_output=False, timeout: int | None = None) -> dict[str, list]:
         check_kernel_params()
         if branches is None:
             branches = self.repo.list_branches()
@@ -79,10 +79,10 @@ class Benchmarker():
             print(
                 f"*********************** Branch {branch} ***********************")
             self.repo.checkout(branch)
-            results[branch] = self.run_benchmark(cases, num_trials, print_output=print_output)
+            results[branch] = self.run_benchmark(cases, num_trials, print_output=print_output, timeout=timeout)
         return results
 
-    def run_benchmark(self, cases: list[TestCase], num_trials: int = 1,  print_output=False) -> list[dict]:
+    def run_benchmark(self, cases: list[TestCase], num_trials: int = 1,  print_output=False, timeout: int | None = None) -> list[dict]:
         try:
             res = subprocess.run(self.build_command, cwd=self.repo.dir, check=True)
             res.check_returncode()
@@ -107,11 +107,13 @@ class Benchmarker():
                     repeats=num_trials,
                     out_file=out_file,
                     events=PERF_EVENTS,
-                    stdout=print_output
+                    stdout=print_output,
+                    timeout=timeout
                 )
                 res.check_returncode()
             except subprocess.CalledProcessError as e:
-                raise RunError(e, self.repo.dir, formatted_command)
+                print(f"!!! ERROR running benchmark (possible timeout)\n{self.repo.dir}\n{format_command}\n{e.output}")
+                # raise RunError(e, self.repo.dir, formatted_command) from None
 
         print(output_files)
         if len(output_files) != len(cases):

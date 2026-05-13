@@ -37,9 +37,11 @@ def create_event_param(events: list[PerfEvent]) -> str:
     return ",".join(str(e) for e in events)
 
 
-def perf_stat(command: list[str], cwd: str | None = None, repeats=1, out_file: str | None = None, events: list[PerfEvent] | None = None, csv=True, stdout=False) -> subprocess.CompletedProcess[bytes]:
+def perf_stat(command: list[str], cwd: str | None = None, repeats=1, out_file: str | None = None, events: list[PerfEvent] | None = None, csv=True, stdout=False, timeout: int | None = None) -> subprocess.CompletedProcess[bytes]:
     # , "--event", "duration_time,cycles,branches,context-switches,migrations,cache-references,cache-misses,task-clock", "-x,", "--repeat", str(repeats), "-o", out_file] + command
     perf_command = ["perf", "stat", "--repeat", str(repeats)]
+    if timeout is not None:
+        perf_command = ["timeout", str(timeout), "perf", "stat", "--repeat", str(repeats)]
     if out_file is not None:
         perf_command += ["-o", out_file]
     if csv:
@@ -56,7 +58,7 @@ def perf_stat(command: list[str], cwd: str | None = None, repeats=1, out_file: s
         return process
     except subprocess.CalledProcessError as e:
         print(f"Unexpected error calling perf with command {command}\nError:\n{e}")
-        raise e
+        raise e from None
 
 
 def to_float(num: str):
@@ -77,6 +79,8 @@ def plot_results(metric: PerfEvent, results, perc=False, branch_labels: dict[str
     json_value_key = "value_dt" if perc else "value"
     json_unit_key = "unit_dt" if perc else "unit"
     plt.figure(figsize=dimensions)
+    axis_label = ""
+
     for (branch, branch_res) in results.items():
         branch_label = branch
         if branch_labels is not None:
@@ -87,14 +91,10 @@ def plot_results(metric: PerfEvent, results, perc=False, branch_labels: dict[str
         display_errors = False
         x_labels = []
         x_size = 0
-        axis_label = ""
         case_counter = 0
         for (i, case) in enumerate(branch_res):
             case_params: dict[str, str] = case["parameters"]
             case_full_data = case["data"]
-            case_metric_data = case_full_data[metric]
-
-            unit = case_metric_data[json_unit_key]
             if case_labels is not None:
                 x_labels.append(case_labels[i])
             elif short_labels:
@@ -102,26 +102,32 @@ def plot_results(metric: PerfEvent, results, perc=False, branch_labels: dict[str
             else:
                 case_label = ", ".join((val.replace("$", "\\$") for val in case_params.values()))
                 x_labels.append(f"Case {case_counter}: {case_label}")
-
             x_size += 1
             case_counter += 1
-            value = to_float(case_metric_data[json_value_key])
 
-            # seconds are much more understandable
-            if unit == "ns":
-                unit = "s"
-                value /= 1e9
-            if unit == "":
-                unit = "count"
-            heights.append(value)
+            if metric in case_full_data:
+                case_metric_data = case_full_data[metric]
+                unit = case_metric_data[json_unit_key]
+                value = to_float(case_metric_data[json_value_key])
 
-            # label y axis showing unit
-            if axis_label == "":
+                # label y axis showing unit
+                # seconds are much more understandable
+                if unit == "ns":
+                    unit = "s"
+                    value /= 1e9
+                if unit == "":
+                    unit = "count"
                 axis_label = f"{metric} ({unit})"
                 display_errors = case_metric_data["variance"] != "single_trial"
-                percentage_error = to_float(case_metric_data["variance"].replace("%", ""))
-                value_error = percentage_error/100 * value
-                errors.append(value_error)
+
+                heights.append(value)
+                if display_errors:
+                    percentage_error = to_float(case_metric_data["variance"].replace("%", ""))
+                    value_error = percentage_error/100 * value
+                    errors.append(value_error)
+            else:
+                # benchmark errored
+                heights.append(0)
 
         offset = width * branch_counter + width/2 - width*num_branches/2
         if display_errors:
