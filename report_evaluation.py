@@ -8,6 +8,8 @@ from time import time
 from pathlib import Path
 from marker.cases import fc_test_cases
 from marker.perf import PerfEvent, plot_results
+from marker.cases.generation import random_word
+from string import ascii_letters
 
 
 class Branch(StrEnum):
@@ -88,10 +90,10 @@ def save_results(name, results: dict, metric=PerfEvent.DURATION_TIME, case_label
     dims = (8, 3)
     plot_results(PerfEvent.DURATION_TIME, results, dimensions=dims, x_rotation=15,
                  branch_labels=pretty_branch_names, case_labels=case_labels)
-    plt.savefig(f"./out/report/{name}/{timestamp}/plot.png", bbox_inches="tight")
+    plt.savefig(f"./out/report/{name}/{timestamp}/plot.png", bbox_inches="tight", dpi=300)
     plot_results(PerfEvent.DURATION_TIME, results, dimensions=dims,
                  x_rotation=15, log_scale=True, branch_labels=pretty_branch_names, case_labels=case_labels)
-    plt.savefig(f"./out/report/{name}/{timestamp}/plot_log.png", bbox_inches="tight")
+    plt.savefig(f"./out/report/{name}/{timestamp}/plot_log.png", bbox_inches="tight", dpi=300)
 
 
 def fake_csv():
@@ -233,8 +235,75 @@ def multiple_occurrences():
     save_results("multiple_occurrences", results, case_labels=labels)
 
 
+def random_conjugates():
+    """
+    Conjugate, as defined in Lothaire:
+    Two words x and y are said to be conjugate if there exist words u,v in A* such thhat
+        x = uv
+        y = vu
+    """
+    num_cases = 8
+    step = 5
+    word = ""
+    cases = []
+    labels = []
+    conjugate_formula = 'exists u exists v(x=u v && y = v u)'
+    for i in range(num_cases):
+        word += random_word(ascii_letters, step)
+        cases.append(
+            {"$FORMULA$": conjugate_formula, "$WORD$": word}
+        )
+        labels.append(f"|w|={(i+1)*step}")
+
+    test_runner = marker.Benchmarker("/home/ahutton/dev/uni/Part D Project/fc-implementation",
+                                     )
+    results = test_runner.benchmark_branches(
+        cases=cases,
+        branches=BRANCHES,
+        num_trials=3,
+        timeout=120,
+        print_output=True
+    )
+    save_results("conjugates", results, case_labels=labels)
+
+
+# This test gave exactly the same times as the other one
+def random_conjugates_no_empties():
+    """
+    Conjugate, as defined in Lothaire:
+    Two words x and y are said to be conjugate if there exist words u,v in A* such thhat
+        x = uv
+        y = vu
+    """
+    num_cases = 8
+    step = 5
+    word = ""
+    cases = []
+    labels = []
+    conjugate_formula = 'exists u exists v(x=u v && y = v u && ¬u="" && ¬v="")'
+    for i in range(num_cases):
+        word += random_word(ascii_letters, step)
+        cases.append(
+            {"$FORMULA$": conjugate_formula, "$WORD$": word}
+        )
+        labels.append(f"|w|={(i+1)*step}")
+
+    test_runner = marker.Benchmarker("/home/ahutton/dev/uni/Part D Project/fc-implementation",
+                                     )
+    results = test_runner.benchmark_branches(
+        cases=cases,
+        branches=BRANCHES,
+        num_trials=3,
+        timeout=120,
+        print_output=True
+    )
+    save_results("conjugates_no_empties", results, case_labels=labels)
+
+
 # fake_csv()
-rust_functions()
-fake_csv_ordering()
-p_tag()
-multiple_occurrences()
+# rust_functions()
+# fake_csv_ordering()
+# p_tag()
+# multiple_occurrences()
+random_conjugates()
+# random_conjugates_no_empties()
