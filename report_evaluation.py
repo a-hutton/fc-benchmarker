@@ -23,6 +23,8 @@ class Branch(StrEnum):
     GROUNDUP_LCP = 'groundup-lcp'
     GROUNDUP_LCP_JOIN = 'groundup-lcp-join'
     GROUNDUP_LCP_JOIN_TEMP = 'groundup-lcp-join-temp'
+    GROUNDUP_LCP_JOIN_HEURISTICS = 'groundup-lcp-join-heuristics'
+    GROUNDUP_LCP_JOIN_NC_HEURISTICS = 'groundup-lcp-join-nc-heuristics'
     GROUNDUP_LCP_MEMO = 'groundup-lcp-memo'
     GROUNDUP_LCP_MEMO_HEURISTICS = 'groundup-lcp-memo-heuristics'
     GROUNDUP_LCP_NC_HEURISTICS = 'groundup-lcp-nc-heuristics'
@@ -49,11 +51,13 @@ pretty_branch_names = {
     str(Branch.FT_NUC_NOHASH_LCP_ENUM): "Best Naive",
     str(Branch.GROUNDUP): "V2",
     str(Branch.GROUNDUP_LCP): "",
-    str(Branch.GROUNDUP_LCP_JOIN): "Join Approach",
+    str(Branch.GROUNDUP_LCP_JOIN): "Join Approach (old)",
     str(Branch.GROUNDUP_LCP_JOIN_TEMP): "",
+    str(Branch.GROUNDUP_LCP_JOIN_HEURISTICS): "Join Approach",
+    str(Branch.GROUNDUP_LCP_JOIN_NC_HEURISTICS): "Join Approach (NC)",
     str(Branch.GROUNDUP_LCP_MEMO): "",
-    str(Branch.GROUNDUP_LCP_MEMO_HEURISTICS): "Final A",
-    str(Branch.GROUNDUP_LCP_NC_HEURISTICS): "Final B",
+    str(Branch.GROUNDUP_LCP_MEMO_HEURISTICS): "Elimination Approach (memo)",
+    str(Branch.GROUNDUP_LCP_NC_HEURISTICS): "Elimination Approach",
     str(Branch.GROUNDUP_LCP_PREGEN): "",
     str(Branch.LCP): "",
     str(Branch.LCP_FACTORS): "",
@@ -66,6 +70,14 @@ pretty_branch_names = {
     str(Branch.PARALLEL): "",
 
 }
+
+BRANCHES = [
+    Branch.GROUNDUP_LCP_JOIN_HEURISTICS,
+    Branch.GROUNDUP_LCP_JOIN_NC_HEURISTICS,
+    Branch.GROUNDUP_LCP_NC_HEURISTICS,
+    Branch.GROUNDUP_LCP_MEMO_HEURISTICS,
+    # Branch.GROUNDUP,
+]
 
 
 def save_results(name, results: dict, metric=PerfEvent.DURATION_TIME, case_labels=None):
@@ -92,8 +104,7 @@ def fake_csv():
     results = test_runner.benchmark_branches(
         cases=[*fc_test_cases(formula, *words),
                ],
-        branches=[Branch.GROUNDUP, Branch.GROUNDUP_LCP_MEMO_HEURISTICS,
-                  Branch.GROUNDUP_LCP_NC_HEURISTICS, Branch.FT_NUC_NOHASH_LCP_ENUM],
+        branches=BRANCHES,
         num_trials=3,
         timeout=120
     )
@@ -113,8 +124,7 @@ def fake_csv_ordering():
         cases=[*fc_test_cases(formula, *words),
                *fc_test_cases(formula2, *words),
                ],
-        branches=[Branch.GROUNDUP, Branch.GROUNDUP_LCP_MEMO_HEURISTICS,
-                  Branch.GROUNDUP_LCP_NC_HEURISTICS,  Branch.GROUNDUP_LCP_JOIN],
+        branches=BRANCHES,
         num_trials=3,
         timeout=120
     )
@@ -139,14 +149,51 @@ def rust_functions():
     results = test_runner.benchmark_branches(
         cases=[*fc_test_cases(formula, *words),
                ],
-        branches=[Branch.GROUNDUP, Branch.GROUNDUP_LCP_MEMO_HEURISTICS,
-                  Branch.GROUNDUP_LCP_NC_HEURISTICS, Branch.FT_NUC_NOHASH_LCP_ENUM],
+        branches=BRANCHES,
         num_trials=3,
         timeout=120
     )
     save_results("rust_functions", results)
 
 
+def p_tag():
+    test_runner = marker.Benchmarker("/home/ahutton/dev/uni/Part D Project/fc-implementation",
+                                     run_command=["./target/release/fc-implementation",
+                                                  "--pattern", "$FORMULA$", "--file", "$WORD$", "--quiet"]
+                                     )
+
+    formula = '∃T (T = "<p>"c"</p>" ∧ ¬∃p ∃s c = p "<p>" s)'
+
+    words = [
+        # '/home/ahutton/dev/uni/Part D Project/fc-tester/test cases/html/acc1.html',
+        # '/home/ahutton/dev/uni/Part D Project/fc-tester/test cases/html/acc2.html',
+        '/home/ahutton/dev/uni/Part D Project/fc-tester/test cases/html/acc3.html',
+        '/home/ahutton/dev/uni/Part D Project/fc-tester/test cases/html/benchmark-implementation.html',
+        '/home/ahutton/dev/uni/Part D Project/fc-tester/test cases/html/background-chapter.html',
+    ]
+    labels = [
+        "4 paragraphs",
+        "Benchmarking",
+        "Background",
+    ]
+    for i in range(len(words)):
+        filename = words[i]
+        with open(filename) as f:
+            n_chars = len(f.read())
+            labels[i] += (f" (len={n_chars})")
+
+    results = test_runner.benchmark_branches(
+        cases=[*fc_test_cases(formula, *words),
+               ],
+        branches=BRANCHES,
+        num_trials=3,
+        timeout=120,
+        print_output=True
+    )
+    save_results("p_tag", results, case_labels=labels)
+
+
 # fake_csv()
-# rust_functions()
+rust_functions()
 fake_csv_ordering()
+p_tag()
