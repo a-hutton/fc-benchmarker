@@ -128,6 +128,8 @@ def plot_results(metric: PerfEvent, results, perc=False, branch_labels: dict[str
             else:
                 # benchmark errored
                 heights.append(0)
+                if display_errors:
+                    errors.append(0)
 
         offset = width * branch_counter + width/2 - width*num_branches/2
         if display_errors:

@@ -65,7 +65,7 @@ class Benchmarker():
         self.build_command = build_command
         self.run_command = run_command
 
-    def benchmark_branches(self, cases: list[TestCase], num_trials=1, branches=None, print_output=False, timeout: int | None = None) -> dict[str, list]:
+    def benchmark_branches(self, cases: list[TestCase], num_trials=1, branches=None, print_output=False, timeout: int | None = None, skip_branch_on_fail=False) -> dict[str, list]:
         check_kernel_params()
         if branches is None:
             branches = self.repo.list_branches()
@@ -79,10 +79,11 @@ class Benchmarker():
             print(
                 f"*********************** Branch {branch} ***********************")
             self.repo.checkout(branch)
-            results[branch] = self.run_benchmark(cases, num_trials, print_output=print_output, timeout=timeout)
+            results[branch] = self.run_benchmark(
+                cases, num_trials, print_output=print_output, timeout=timeout, skip_branch_on_fail=skip_branch_on_fail)
         return results
 
-    def run_benchmark(self, cases: list[TestCase], num_trials: int = 1,  print_output=False, timeout: int | None = None) -> list[dict]:
+    def run_benchmark(self, cases: list[TestCase], num_trials: int = 1,  print_output=False, timeout: int | None = None, skip_branch_on_fail=False) -> list[dict]:
         try:
             res = subprocess.run(self.build_command, cwd=self.repo.dir, check=True)
             res.check_returncode()
@@ -113,16 +114,30 @@ class Benchmarker():
                 res.check_returncode()
             except subprocess.CalledProcessError as e:
                 print(f"!!! ERROR running benchmark (possible timeout)\n{self.repo.dir}\n{format_command}\n{e.output}")
+                if skip_branch_on_fail:
+                    print("!!!! SKIPPING REST OF RUNS FOR BRANCH")
+                    break
                 # raise RunError(e, self.repo.dir, formatted_command) from None
 
         print(output_files)
         if len(output_files) != len(cases):
-            print(
-                f"!!!!! SOMETHING HAS GONE VERY WRONG !!!!!\n output files: len: {len(output_files)}\ntest cases: len: {len(cases)}")
-            print("Don't trust the output JSON - data *will* be misaligned and attributed to wrong case")
+            if skip_branch_on_fail:
+                print(f"I'm trying to reconcile the {len(output_files)} Perf results with the {len(cases)} cases")
+            else:
+                print(
+                    f"!!!!! SOMETHING HAS GONE VERY WRONG !!!!!\n output files: len: {len(output_files)}\ntest cases: len: {len(cases)}")
+                print("Don't trust the output JSON - data *will* be misaligned and attributed to wrong case")
         bench_data = []
+
         for i in range(len(cases)):
             case = cases[i]
+            if skip_branch_on_fail and i >= len(output_files):
+                bench_data.append({
+                    "parameters": case,
+                    "data": {}
+                })
+                continue
+
             filename = output_files[i]
             # read data for this run
             with open(filename, "r") as f:

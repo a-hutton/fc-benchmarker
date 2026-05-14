@@ -242,7 +242,7 @@ def random_conjugates():
         x = uv
         y = vu
     """
-    num_cases = 8
+    num_cases = 15
     step = 5
     word = ""
     cases = []
@@ -259,45 +259,15 @@ def random_conjugates():
                                      )
     results = test_runner.benchmark_branches(
         cases=cases,
-        branches=BRANCHES,
+        branches=[Branch.FT_NUC_NOHASH_LCP_ENUM, Branch.GROUNDUP_LCP_NC_HEURISTICS,
+                  Branch.GROUNDUP_LCP_JOIN_NC_HEURISTICS],
         num_trials=3,
         timeout=120,
-        print_output=True
+        print_output=True,
+        skip_branch_on_fail=True
+
     )
     save_results("conjugates", results, case_labels=labels)
-
-
-# This test gave exactly the same times as the other one
-def random_conjugates_no_empties():
-    """
-    Conjugate, as defined in Lothaire:
-    Two words x and y are said to be conjugate if there exist words u,v in A* such thhat
-        x = uv
-        y = vu
-    """
-    num_cases = 8
-    step = 5
-    word = ""
-    cases = []
-    labels = []
-    conjugate_formula = 'exists u exists v(x=u v && y = v u && ¬u="" && ¬v="")'
-    for i in range(num_cases):
-        word += random_word(ascii_letters, step)
-        cases.append(
-            {"$FORMULA$": conjugate_formula, "$WORD$": word}
-        )
-        labels.append(f"|w|={(i+1)*step}")
-
-    test_runner = marker.Benchmarker("/home/ahutton/dev/uni/Part D Project/fc-implementation",
-                                     )
-    results = test_runner.benchmark_branches(
-        cases=cases,
-        branches=BRANCHES,
-        num_trials=3,
-        timeout=120,
-        print_output=True
-    )
-    save_results("conjugates_no_empties", results, case_labels=labels)
 
 
 # fake_csv()
@@ -306,4 +276,3 @@ def random_conjugates_no_empties():
 # p_tag()
 # multiple_occurrences()
 random_conjugates()
-# random_conjugates_no_empties()
