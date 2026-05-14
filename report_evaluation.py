@@ -68,17 +68,18 @@ pretty_branch_names = {
 }
 
 
-def save_results(name, results: dict, metric=PerfEvent.DURATION_TIME):
+def save_results(name, results: dict, metric=PerfEvent.DURATION_TIME, case_labels=None):
     timestamp = datetime.fromtimestamp(time()).strftime("%Y-%m-%d %H-%M-%S")
     Path(f"./out/report/{name}/{timestamp}/").mkdir(parents=True, exist_ok=True)
     with open(f"./out/report/{name}/{timestamp}/data.json", "w") as f:
         json.dump(results, f, indent=4)
     dims = (8, 3)
-    plot_results(PerfEvent.DURATION_TIME, results, dimensions=dims, x_rotation=0, branch_labels=pretty_branch_names)
-    plt.savefig(f"./out/report/{name}/{timestamp}/plot.png")
+    plot_results(PerfEvent.DURATION_TIME, results, dimensions=dims, x_rotation=15,
+                 branch_labels=pretty_branch_names, case_labels=case_labels)
+    plt.savefig(f"./out/report/{name}/{timestamp}/plot.png", bbox_inches="tight")
     plot_results(PerfEvent.DURATION_TIME, results, dimensions=dims,
-                 x_rotation=0, log_scale=True, branch_labels=pretty_branch_names)
-    plt.savefig(f"./out/report/{name}/{timestamp}/plot_log.png")
+                 x_rotation=15, log_scale=True, branch_labels=pretty_branch_names, case_labels=case_labels)
+    plt.savefig(f"./out/report/{name}/{timestamp}/plot_log.png", bbox_inches="tight")
 
 
 def fake_csv():
@@ -97,6 +98,29 @@ def fake_csv():
         timeout=120
     )
     save_results("fake_csv", results)
+
+
+def fake_csv_ordering():
+    test_runner = marker.Benchmarker("/home/ahutton/dev/uni/Part D Project/fc-implementation")
+    formula = 'l=";"c";" && c=a "," b && ¬(exists p exists s  c = p ";"  s) && ¬(exists p exists s  a = p "," s)'
+
+    formula2 = 'c=a "," b && l=";"c";" && ¬(exists p exists s  c = p ";"  s) && ¬(exists p exists s  a = p "," s)'
+
+    words = [';aa,cc;11,22;ghj,eroikj;', ';aa,cc;11,22;ghj,eroikj;and more,here;',
+             ';aa,cc;11,22;ghj,eroikj;and more,here;315asd,44asd;']
+
+    results = test_runner.benchmark_branches(
+        cases=[*fc_test_cases(formula, *words),
+               *fc_test_cases(formula2, *words),
+               ],
+        branches=[Branch.GROUNDUP, Branch.GROUNDUP_LCP_MEMO_HEURISTICS,
+                  Branch.GROUNDUP_LCP_NC_HEURISTICS,  Branch.GROUNDUP_LCP_JOIN],
+        num_trials=3,
+        timeout=120
+    )
+    case_labels = ["3 Rows Order A", "4 Rows Order A", "5 Rows Order A",
+                   "3 Rows Order B", "4 Rows Order B", "5 Rows Order B"]
+    save_results("fake_csv_ordering", results, case_labels=case_labels)
 
 
 def rust_functions():
@@ -123,5 +147,6 @@ def rust_functions():
     save_results("rust_functions", results)
 
 
-fake_csv()
-rust_functions()
+# fake_csv()
+# rust_functions()
+fake_csv_ordering()
