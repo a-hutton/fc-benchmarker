@@ -53,8 +53,8 @@ pretty_branch_names = {
     str(Branch.GROUNDUP_LCP): "",
     str(Branch.GROUNDUP_LCP_JOIN): "Join Approach (old)",
     str(Branch.GROUNDUP_LCP_JOIN_TEMP): "",
-    str(Branch.GROUNDUP_LCP_JOIN_HEURISTICS): "Join Approach",
-    str(Branch.GROUNDUP_LCP_JOIN_NC_HEURISTICS): "Join Approach (NC)",
+    str(Branch.GROUNDUP_LCP_JOIN_HEURISTICS): "Join Approach (old)",
+    str(Branch.GROUNDUP_LCP_JOIN_NC_HEURISTICS): "Join Approach",
     str(Branch.GROUNDUP_LCP_MEMO): "",
     str(Branch.GROUNDUP_LCP_MEMO_HEURISTICS): "Elimination Approach (memo)",
     str(Branch.GROUNDUP_LCP_NC_HEURISTICS): "Elimination Approach",
@@ -72,10 +72,10 @@ pretty_branch_names = {
 }
 
 BRANCHES = [
-    Branch.GROUNDUP_LCP_JOIN_HEURISTICS,
+    # Branch.GROUNDUP_LCP_JOIN_HEURISTICS,
     Branch.GROUNDUP_LCP_JOIN_NC_HEURISTICS,
     Branch.GROUNDUP_LCP_NC_HEURISTICS,
-    Branch.GROUNDUP_LCP_MEMO_HEURISTICS,
+    # Branch.GROUNDUP_LCP_MEMO_HEURISTICS,
     # Branch.GROUNDUP,
 ]
 
@@ -146,6 +146,11 @@ def rust_functions():
         '/home/ahutton/dev/uni/Part D Project/tests/rust-tests/src/fake_formula_parser.rs',
         '/home/ahutton/dev/uni/Part D Project/tests/rust-tests/src/formula_parser.rs',
     ]
+    labels = [
+        "Short file",
+        "Modified real file",
+        "Implementation Code",
+    ]
     results = test_runner.benchmark_branches(
         cases=[*fc_test_cases(formula, *words),
                ],
@@ -153,7 +158,7 @@ def rust_functions():
         num_trials=3,
         timeout=120
     )
-    save_results("rust_functions", results)
+    save_results("rust_functions", results, case_labels=labels)
 
 
 def p_tag():
@@ -193,7 +198,43 @@ def p_tag():
     save_results("p_tag", results, case_labels=labels)
 
 
+def multiple_occurrences():
+    test_runner = marker.Benchmarker("/home/ahutton/dev/uni/Part D Project/fc-implementation",
+                                     run_command=["./target/release/fc-implementation",
+                                                  "--pattern", "$FORMULA$", "--file", "$WORD$", "--quiet"]
+                                     )
+
+    formula = 'exists p1(exists p2(exists s1(exists s2((($U=p1 x s1 && $U=p2 x s2)&&¬p1=p2)))))'
+
+    words = [
+        '/home/ahutton/dev/uni/Part D Project/fc-tester/test cases/html/acc3.html',
+        '/home/ahutton/dev/uni/Part D Project/fc-tester/test cases/html/benchmark-implementation.html',
+        '/home/ahutton/dev/uni/Part D Project/tests/rust-tests/src/fake_formula_parser.rs',
+    ]
+    labels = [
+        "3 paragraphs",
+        "Background",
+        "Rust file #2",
+    ]
+    for i in range(len(words)):
+        filename = words[i]
+        with open(filename) as f:
+            n_chars = len(f.read())
+            labels[i] += (f" (len={n_chars})")
+
+    results = test_runner.benchmark_branches(
+        cases=[*fc_test_cases(formula, *words),
+               ],
+        branches=BRANCHES,
+        num_trials=3,
+        timeout=120,
+        print_output=True
+    )
+    save_results("multiple_occurrences", results, case_labels=labels)
+
+
 # fake_csv()
 rust_functions()
 fake_csv_ordering()
 p_tag()
+multiple_occurrences()
