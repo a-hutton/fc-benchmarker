@@ -270,9 +270,144 @@ def random_conjugates():
     save_results("conjugates", results, case_labels=labels)
 
 
+def growing_equations():
+    num_words = 10
+    word_growth_step = 5
+    max_n_vars = 5
+
+    equations = ["a = v0 "]
+    for n_vars in range(1, max_n_vars):
+        last_eq = equations[n_vars-1]
+        new_eq = last_eq + f" v{n_vars}"
+        equations.append(new_eq)
+
+    words = [random_word(ascii_letters, word_growth_step)]
+    for i in range(1, num_words):
+        last_word = words[i-1]
+        new_word = last_word + random_word(ascii_letters, word_growth_step)
+        words.append(new_word)
+
+    cases = []
+    labels = []
+    for (i, eq) in enumerate(equations):
+        for word in words:
+            labels.append(f"{i+1} vars |w|={len(word)}")
+            cases.append({"$FORMULA$": eq, "$WORD$": word})
+
+    test_runner = marker.Benchmarker("/home/ahutton/dev/uni/Part D Project/fc-implementation",
+                                     )
+    results = test_runner.benchmark_branches(
+        cases=cases,
+        branches=[Branch.GROUNDUP_LCP_JOIN_NC_HEURISTICS],
+        num_trials=3,
+        timeout=120,
+        print_output=True,
+        skip_branch_on_fail=True
+
+    )
+    save_results("growing_equations", results, case_labels=labels)
+
+
+def growing_disjunctions():
+    n_fragments = 4
+    num_words = 5
+    word_growth_step = 5
+
+    equations = ['a = v0']
+    for i in range(1, n_fragments):
+        last_eq = equations[i-1]
+        new_eq = last_eq + f" || v{i}=v{i-1}"
+        equations.append(new_eq)
+
+    words = [random_word(ascii_letters, word_growth_step)]
+    for i in range(1, num_words):
+        last_word = words[i-1]
+        new_word = last_word + random_word(ascii_letters, word_growth_step)
+        words.append(new_word)
+
+    labels = []
+    results = {}
+    test_runner = marker.Benchmarker("/home/ahutton/dev/uni/Part D Project/fc-implementation",)
+
+    # This allows the branch to, for each formula, keep going on larger words until the timeout is reached, then go on to the next formula, storing all results
+    for (i, eq) in enumerate(equations):
+        cases = []
+        for word in words:
+            labels.append(f"D={i+1}  W={len(word)}")
+            cases.append({"$FORMULA$": eq, "$WORD$": word})
+
+        branches = BRANCHES
+        loop_results = test_runner.benchmark_branches(
+            cases=cases,
+            branches=branches,
+            num_trials=3,
+            timeout=120,
+            print_output=True,
+            skip_branch_on_fail=True
+
+        )
+        for branch in branches:
+            if branch not in results:
+                results[branch] = loop_results[branch]
+            else:
+                results[branch] += loop_results[branch]
+
+    save_results("growing_disjunctions", results, case_labels=labels)
+
+
+def growing_conjunctions():
+    # same as above, but for conjunctions (hopefully will be much nicer)
+    n_fragments = 4
+    num_words = 5
+    word_growth_step = 5
+
+    equations = ['a = v0']
+    for i in range(1, n_fragments):
+        last_eq = equations[i-1]
+        new_eq = last_eq + f" && v{i}=v{i-1}"
+        equations.append(new_eq)
+
+    words = [random_word(ascii_letters, word_growth_step)]
+    for i in range(1, num_words):
+        last_word = words[i-1]
+        new_word = last_word + random_word(ascii_letters, word_growth_step)
+        words.append(new_word)
+
+    labels = []
+    results = {}
+    test_runner = marker.Benchmarker("/home/ahutton/dev/uni/Part D Project/fc-implementation",)
+
+    # This allows the branch to, for each formula, keep going on larger words until the timeout is reached, then go on to the next formula, storing all results
+    for (i, eq) in enumerate(equations):
+        cases = []
+        for word in words:
+            labels.append(f"D={i+1}  W={len(word)}")
+            cases.append({"$FORMULA$": eq, "$WORD$": word})
+
+        branches = BRANCHES
+        loop_results = test_runner.benchmark_branches(
+            cases=cases,
+            branches=branches,
+            num_trials=3,
+            timeout=120,
+            print_output=True,
+            skip_branch_on_fail=True
+
+        )
+        for branch in branches:
+            if branch not in results:
+                results[branch] = loop_results[branch]
+            else:
+                results[branch] += loop_results[branch]
+
+    save_results("growing_conjunctions", results, case_labels=labels)
+
+
 # fake_csv()
 # rust_functions()
 # fake_csv_ordering()
-# p_tag()
+p_tag()
 # multiple_occurrences()
-random_conjugates()
+# random_conjugates()
+# growing_equations()
+# growing_conjunctions()
