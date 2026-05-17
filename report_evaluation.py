@@ -10,6 +10,7 @@ from marker.cases import fc_test_cases
 from marker.perf import PerfEvent, plot_results
 from marker.cases.generation import random_word
 from string import ascii_letters
+from random import randint
 
 
 class Branch(StrEnum):
@@ -49,7 +50,7 @@ pretty_branch_names = {
     str(Branch.FT_NUC_AHASH): "A Hash",
     str(Branch.FT_NUC_FXHASH): "FX Hash",
     str(Branch.FT_NUC_NOHASH): "No Hash",
-    str(Branch.FT_NUC_NOHASH_LCP): "",
+    str(Branch.FT_NUC_NOHASH_LCP): "ft-nuc-nohash-lcp",
     str(Branch.FT_NUC_NOHASH_LCP_ENUM): "Best Naive",
     str(Branch.GROUNDUP): "V2",
     str(Branch.GROUNDUP_LCP): "",
@@ -88,11 +89,13 @@ def save_results(name, results: dict, metric=PerfEvent.DURATION_TIME, case_label
     with open(f"./out/report/{name}/{timestamp}/data.json", "w") as f:
         json.dump(results, f, indent=4)
     dims = (8, 3)
-    plot_results(PerfEvent.DURATION_TIME, results, dimensions=dims, x_rotation=15,
+    plot_results(PerfEvent.DURATION_TIME, results, dimensions=dims, x_rotation=90,
                  branch_labels=pretty_branch_names, case_labels=case_labels)
+    plt.title("Linear Scale")
     plt.savefig(f"./out/report/{name}/{timestamp}/plot.png", bbox_inches="tight", dpi=300)
-    plot_results(PerfEvent.DURATION_TIME, results, dimensions=dims,
-                 x_rotation=15, log_scale=True, branch_labels=pretty_branch_names, case_labels=case_labels)
+    plot_results(PerfEvent.DURATION_TIME, results, dimensions=dims, x_rotation=90,
+                 log_scale=True, branch_labels=pretty_branch_names, case_labels=case_labels)
+    plt.title("Logarithmic Scale")
     plt.savefig(f"./out/report/{name}/{timestamp}/plot_log.png", bbox_inches="tight", dpi=300)
 
 
@@ -119,19 +122,26 @@ def fake_csv_ordering():
 
     formula2 = 'c=a "," b && l=";"c";" && ¬(exists p exists s  c = p ";"  s) && ¬(exists p exists s  a = p "," s)'
 
-    words = [';aa,cc;11,22;ghj,eroikj;', ';aa,cc;11,22;ghj,eroikj;and more,here;',
-             ';aa,cc;11,22;ghj,eroikj;and more,here;315asd,44asd;']
+    n_rows = 7
+    words = [f";{random_word(ascii_letters, randint(1, 10))},{random_word(ascii_letters, randint(1, 10))};"]
+    for i in range(1, n_rows):
+        last_word = words[i-1]
+        new_word = last_word + \
+            f"{random_word(ascii_letters, randint(1, 10))},{random_word(ascii_letters, randint(1, 10))};"
+        words.append(new_word)
 
+    cases = [{"$FORMULA$": f, "$WORD$": w} for w in words for f in [formula, formula2]]
+    # print(str(cases))
     results = test_runner.benchmark_branches(
-        cases=[*fc_test_cases(formula, *words),
-               *fc_test_cases(formula2, *words),
-               ],
+        cases=cases,
         branches=BRANCHES,
         num_trials=3,
-        timeout=120
+        timeout=120,
+        skip_branch_on_fail=False,
+        print_output=True
     )
-    case_labels = ["3 Rows Order A", "4 Rows Order A", "5 Rows Order A",
-                   "3 Rows Order B", "4 Rows Order B", "5 Rows Order B"]
+    case_labels = [f"{order} | {n+1} rows" for n in range(n_rows) for order in ['A', 'B']]
+
     save_results("fake_csv_ordering", results, case_labels=case_labels)
 
 
@@ -148,11 +158,13 @@ def rust_functions():
         '/home/ahutton/dev/uni/Part D Project/tests/rust-tests/src/fake_formula_parser.rs',
         '/home/ahutton/dev/uni/Part D Project/tests/rust-tests/src/formula_parser.rs',
     ]
-    labels = [
-        "Short file",
-        "Modified real file",
-        "Implementation Code",
-    ]
+    labels = []
+    for i in range(len(words)):
+        filename = words[i]
+        with open(filename) as f:
+            n_chars = len(f.read())
+            labels.append(f"{i}: (len={n_chars})")
+
     results = test_runner.benchmark_branches(
         cases=[*fc_test_cases(formula, *words),
                ],
@@ -174,20 +186,20 @@ def p_tag():
     words = [
         # '/home/ahutton/dev/uni/Part D Project/fc-tester/test cases/html/acc1.html',
         # '/home/ahutton/dev/uni/Part D Project/fc-tester/test cases/html/acc2.html',
-        '/home/ahutton/dev/uni/Part D Project/fc-tester/test cases/html/acc3.html',
+        # '/home/ahutton/dev/uni/Part D Project/fc-tester/test cases/html/acc3.html',
+        '/home/ahutton/dev/uni/Part D Project/fc-tester/test cases/html/intro.html',
+        '/home/ahutton/dev/uni/Part D Project/fc-tester/test cases/html/unit-testing.html',
+        '/home/ahutton/dev/uni/Part D Project/fc-tester/test cases/html/brute-force-optimisations.html',
         '/home/ahutton/dev/uni/Part D Project/fc-tester/test cases/html/benchmark-implementation.html',
+        # '/home/ahutton/dev/uni/Part D Project/fc-tester/test cases/html/tool-usage.html',
         '/home/ahutton/dev/uni/Part D Project/fc-tester/test cases/html/background-chapter.html',
     ]
-    labels = [
-        "4 paragraphs",
-        "Benchmarking",
-        "Background",
-    ]
+    labels = []
     for i in range(len(words)):
         filename = words[i]
         with open(filename) as f:
             n_chars = len(f.read())
-            labels[i] += (f" (len={n_chars})")
+            labels.append(f"{i}: (len={n_chars})")
 
     results = test_runner.benchmark_branches(
         cases=[*fc_test_cases(formula, *words),
@@ -198,6 +210,29 @@ def p_tag():
         print_output=True
     )
     save_results("p_tag", results, case_labels=labels)
+
+
+def naive_p_tag():
+    test_runner = marker.Benchmarker("/home/ahutton/dev/uni/Part D Project/fc-implementation")
+
+    formula = '∃T (T = "<p>"c"</p>" ∧ ¬∃p ∃s c = p "<p>" s)'
+
+    max_n_ps = 4
+    words = [f"<p>{random_word(ascii_letters, 13)}</p>"]
+    for i in range(1, max_n_ps):
+        last_word = words[i-1]
+        words.append(last_word + f"<p>{random_word(ascii_letters, 13)}</p>")
+
+    labels = [f"|w|={len(w)}" for w in words]
+
+    results = test_runner.benchmark_branches(
+        cases=[*fc_test_cases(formula, *words),],
+        branches=[Branch.FT_NUC_NOHASH_LCP_ENUM],
+        num_trials=3,
+        timeout=120,
+        print_output=True
+    )
+    save_results("naive_p_tag", results, case_labels=labels)
 
 
 def multiple_occurrences():
@@ -403,11 +438,37 @@ def growing_conjunctions():
     save_results("growing_conjunctions", results, case_labels=labels)
 
 
+def factor_enumeration():
+    test_runner = marker.Benchmarker("/home/ahutton/dev/uni/Part D Project/fc-implementation",
+                                     run_command=["./target/release/fc-implementation",
+                                                  "--command", "generate-factors", "--file", "$WORD$", "--quiet"])
+    files = [
+        "/home/ahutton/dev/uni/Part D Project/fc-tester/test cases/texts/basic-rust.rs",
+        "/home/ahutton/dev/uni/Part D Project/fc-tester/test cases/texts/short-xmas.txt",
+    ]
+    labels = ["basic rust", "xmas"]
+    cases = [{"$WORD$": f}for f in files]
+
+    results = test_runner.benchmark_branches(
+        cases=cases,
+        branches=[Branch.FT_NUC_NOHASH_LCP, Branch.FT_NUC_NOHASH],
+        num_trials=1,
+        timeout=120,
+        print_output=True,
+        skip_branch_on_fail=True
+
+    )
+
+    save_results("factor_enumeration", results, case_labels=labels)
+
+
 # fake_csv()
 # rust_functions()
 # fake_csv_ordering()
-p_tag()
+# p_tag()
 # multiple_occurrences()
 # random_conjugates()
 # growing_equations()
 # growing_conjunctions()
+# naive_p_tag()
+factor_enumeration()
