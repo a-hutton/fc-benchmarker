@@ -152,7 +152,10 @@ def rust_functions():
                                      )
 
     formula = 'sig = "fn " name "(" ∧ ¬∃ p ∃ s name = p " " s'
-
+    #     formula = 'sig = "fn " name "(" args "){" \
+    # ∧ ¬∃ p ∃ s name = p " " s \
+    # ∧ ∃ p ∃ s args = p "&mut" s\
+    # ∧ ¬∃ p ∃ s args = p "(" s'
     words = [
         '/home/ahutton/dev/uni/Part D Project/tests/rust-tests/src/main.rs',
         '/home/ahutton/dev/uni/Part D Project/tests/rust-tests/src/fake_formula_parser.rs',
@@ -168,9 +171,10 @@ def rust_functions():
     results = test_runner.benchmark_branches(
         cases=[*fc_test_cases(formula, *words),
                ],
-        branches=BRANCHES,
+        branches=[Branch.GROUNDUP_LCP_NC_HEURISTICS],
         num_trials=3,
-        timeout=120
+        timeout=120,
+        print_output=True
     )
     save_results("rust_functions", results, case_labels=labels)
 
@@ -306,8 +310,8 @@ def random_conjugates():
 
 
 def growing_equations():
-    num_words = 10
-    word_growth_step = 5
+    num_words = 2
+    word_growth_step = 25
     max_n_vars = 5
 
     equations = ["a = v0 "]
@@ -333,7 +337,7 @@ def growing_equations():
                                      )
     results = test_runner.benchmark_branches(
         cases=cases,
-        branches=[Branch.GROUNDUP_LCP_JOIN_NC_HEURISTICS],
+        branches=[Branch.GROUNDUP_LCP_JOIN_NC_HEURISTICS, Branch.FT_NUC_NOHASH_LCP_ENUM],
         num_trials=3,
         timeout=120,
         print_output=True,
@@ -462,13 +466,48 @@ def factor_enumeration():
     save_results("factor_enumeration", results, case_labels=labels)
 
 
+def squares():
+    """
+    Make a word of length n that is square, and one of length n that is not
+    """
+    num_cases = 15
+    step = 20
+    cases = []
+    labels = []
+    square_formula = 'w = $U && $U = x x'
+    for i in range(num_cases):
+        cases.append(
+            {"$FORMULA$": square_formula, "$WORD$": random_word(ascii_letters, step * i + step)}
+        )
+        x = random_word(ascii_letters, (step * i + step))
+        cases.append(
+            {"$FORMULA$": square_formula, "$WORD$": x + x}
+        )
+        labels.append(f"s {(i+1)*step:03d}")
+        labels.append(f"r {(i+1)*step:03d}")
+
+    test_runner = marker.Benchmarker("/home/ahutton/dev/uni/Part D Project/fc-implementation",
+                                     )
+    results = test_runner.benchmark_branches(
+        cases=cases,
+        branches=BRANCHES,
+        num_trials=3,
+        timeout=120,
+        print_output=True,
+        skip_branch_on_fail=True
+
+    )
+    save_results("squares_q", results, case_labels=labels)
+
+
 # fake_csv()
 # rust_functions()
 # fake_csv_ordering()
 # p_tag()
 # multiple_occurrences()
 # random_conjugates()
-# growing_equations()
+growing_equations()
 # growing_conjunctions()
 # naive_p_tag()
-factor_enumeration()
+# factor_enumeration()
+# squares()
