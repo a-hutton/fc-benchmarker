@@ -31,9 +31,9 @@ This change will last until the computer restarts.
 
 ## Jupyter Notebook
 
-The Jupyter Notebook `Example Notebook.ipynb` is included to show examples of
-the benchmarking tool's usage. An exported HTML version is included as
-`Example Notebook.html`.
+The Jupyter Notebook `Benchmarking Example.ipynb` is included to show examples
+of the benchmarking tool's usage. An exported HTML version is included as
+`Benchmarking Example.html`.
 
 ## Basic Usage
 
