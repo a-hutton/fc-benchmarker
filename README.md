@@ -12,6 +12,7 @@ The tool must run on a Linux system, with the following programs installed:
 - Git
 - Perf
 - Python ≥ 3.12
+- Cargo (installed via [rustup](https://rust-lang.org/learn/get-started/))
 
 Python must have access to the Matplotlib library.
 
@@ -27,6 +28,12 @@ sudo echo 0 > /proc/sys/kernel/kptr_restrict
 
 This will _temporarily_ allow the profiler access to the required information.
 This change will last until the computer restarts.
+
+## Jupyter Notebook
+
+The Jupyter Notebook `Example Notebook.ipynb` is included to show examples of
+the benchmarking tool's usage. An exported HTML version is included as
+`Example Notebook.html`.
 
 ## Basic Usage
 
