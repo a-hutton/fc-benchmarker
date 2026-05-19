@@ -15,6 +15,19 @@ The tool must run on a Linux system, with the following programs installed:
 
 Python must have access to the Matplotlib library.
 
+## Giving perf permissions
+
+Perf requires access to hardware-level counters that are protected by the OS.
+Before running the tool, run
+
+```bash
+sudo echo 0 > /proc/sys/kernel/perf_event_paranoid
+sudo echo 0 > /proc/sys/kernel/kptr_restrict
+```
+
+This will _temporarily_ allow the profiler access to the required information.
+This change will last until the computer restarts.
+
 ## Basic Usage
 
 Benchmark how long it takes for every local branch to enumerate all factors that
